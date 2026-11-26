@@ -162,6 +162,32 @@ def register():
         {"id": cur.lastrowid, "username": username, "email": email}
     ), 201
 
+@app.post("/login")
+def login():
+    data = request.get_json(silent=True)
+    username = (data or {}).get("username")
+    password = (data or {}).get("password")
+
+    if not username or not password:
+        return jsonify({"error": "Invalid username or password"}), 401
+
+    db = get_db()
+
+    user = db.execute(
+        "SELECT id, username, password_hash FROM users WHERE username = ?",
+        (username,),
+    ).fetchone()
+
+    if user is None or not check_password_hash(user["password_hash"],password):
+        return jsonify({"error": "Invalid username or password"}), 401
+
+    return jsonify(
+        {
+            "id": user["id"],
+            "username": user["username"],
+        }
+    ), 200
+
 
 if __name__ == "__main__":
     fake_plain_password = "fake-register-password"
