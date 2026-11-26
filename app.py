@@ -9,6 +9,14 @@ import sqlite3
 
 from flask import Flask, g, jsonify, request
 
+from werkzeug.security import generate_password_hash, check_password_hash
+
+def hash_password(plain_password: str) -> str:
+    return generate_password_hash(plain_password)
+
+def verify_password(stored_hash: str, candidate_password: str) -> bool:
+    return check_password_hash(stored_hash, candidate_password)
+
 DATABASE = "recipes.db"
 
 app = Flask(__name__)
@@ -127,6 +135,41 @@ def delete_recipe(recipe_id):
         return jsonify({"error": "recipe not found"}), 404
     return "", 204
 
+@app.post("/register")
+def register():
+    data = request.get_json(silent=True)
 
+    username = (data or {}).get("username")
+    email = (data or {}).get("email")
+    password = (data or {}).get("password")
+
+    if not username or not email or not password:
+        return jsonify({"error": "username, email, and password are required"}), 400
+
+    password_hash = hash_password(password)
+
+    db = get_db()
+    try:
+        cur = db.execute(
+            "INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)",
+            (username, email, password_hash),
+        )
+        db.commit()
+    except sqlite3.IntegrityError:
+        return jsonify({"error": "username or email already exists"}), 409
+
+    return jsonify(
+        {"id": cur.lastrowid, "username": username, "email": email}
+    ), 201
+
+
+if __name__ == "__main__":
+    fake_plain_password = "fake-register-password"
+    stored_hash = hash_password(fake_plain_password)
+    print("Stored password_hash for DB:", stored_hash)
+
+    print("login with correct password:", verify_password(stored_hash, "fake-register-password"))
+    print("login with wrong password:", verify_password(stored_hash, "not-the-right-password"))
+    app.run(debug=True)
 if __name__ == "__main__":
     app.run(debug=True)
