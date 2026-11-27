@@ -169,7 +169,7 @@ def login():
     password = (data or {}).get("password")
 
     if not username or not password:
-        return jsonify({"error": "Invalid username or password"}), 401
+        return jsonify({"error": "username and password are required"}), 400
 
     db = get_db()
 
@@ -178,6 +178,7 @@ def login():
         (username,),
     ).fetchone()
 
+    
     if user is None or not check_password_hash(user["password_hash"],password):
         return jsonify({"error": "Invalid username or password"}), 401
 
